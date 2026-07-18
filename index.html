@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Financeiro</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f172a;--bg2:#1e293b;--bg3:#334155;
+  --text:#f1f5f9;--text2:#94a3b8;
+  --green:#10b981;--green2:#d1fae5;
+  --red:#ef4444;--red2:#fee2e2;
+  --blue:#3b82f6;--blue2:#dbeafe;
+  --amber:#f59e0b;--purple:#8b5cf6;
+  --border:#334155;--radius:12px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* TOPBAR */
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:50}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:36px;height:36px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.logo-text{font-size:16px;font-weight:700}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.mes-select{background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-size:13px;cursor:pointer}
+
+/* LAYOUT */
+.container{max-width:1200px;margin:0 auto;padding:1.5rem}
+
+/* MÉTRICAS */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem}
+.metric{background:var(--bg2);border-radius:var(--radius);border:1px solid var(--border);padding:1.25rem;display:flex;flex-direction:column;gap:8px}
+.metric-header{display:flex;align-items:center;justify-content:space-between}
+.metric-label{font-size:12px;color:var(--text2);font-weight:500}
+.metric-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.metric-value{font-size:24px;font-weight:700}
+.metric-sub{font-size:12px;color:var(--text2)}
+.metric-trend{font-size:12px;font-weight:500}
+.trend-up{color:var(--green)}
+.trend-down{color:var(--red)}
+
+/* GRID */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+.grid3{display:grid;grid-template-columns:2fr 1fr;gap:1rem;margin-bottom:1rem}
+.card{background:var(--bg2);border-radius:var(--radius);border:1px solid var(--border);padding:1.25rem}
+.card-title{font-size:14px;font-weight:600;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between}
+.card-subtitle{font-size:12px;color:var(--text2)}
+
+/* TRANSAÇÕES */
+.transaction{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+.transaction:last-child{border-bottom:none}
+.transaction-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.transaction-info{flex:1;min-width:0}
+.transaction-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.transaction-date{font-size:11px;color:var(--text2);margin-top:2px}
+.transaction-amount{font-size:14px;font-weight:600;flex-shrink:0}
+.amount-positive{color:var(--green)}
+.amount-negative{color:var(--red)}
+
+/* CATEGORIAS */
+.cat-item{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.cat-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.cat-info{flex:1}
+.cat-name{font-size:12px;font-weight:500}
+.cat-bar{height:4px;background:var(--bg3);border-radius:2px;margin-top:4px}
+.cat-fill{height:4px;border-radius:2px}
+.cat-value{font-size:12px;color:var(--text2);flex-shrink:0}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg2);border-radius:16px;padding:1.5rem;width:400px;max-width:95vw;border:1px solid var(--border)}
+.modal-title{font-size:15px;font-weight:600;margin-bottom:1.25rem;display:flex;justify-content:space-between;align-items:center}
+.form-group{margin-bottom:14px}
+.form-label{font-size:12px;color:var(--text2);margin-bottom:5px;display:block;font-weight:500}
+input,select{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;color:var(--text);background:var(--bg3);outline:none;transition:border-color .15s}
+input:focus,select:focus{border-color:var(--blue)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tipo-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tipo-btn{padding:9px;border-radius:8px;border:2px solid var(--border);background:var(--bg3);color:var(--text2);font-size:13px;cursor:pointer;text-align:center;transition:.15s;font-family:inherit}
+.tipo-btn.active-receita{border-color:var(--green);background:rgba(16,185,129,.1);color:var(--green);font-weight:500}
+.tipo-btn.active-despesa{border-color:var(--red);background:rgba(239,68,68,.1);color:var(--red);font-weight:500}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border)}
+
+/* BOTÕES */
+.btn{padding:8px 16px;border-radius:8px;border:none;font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;transition:.15s}
+.btn-primary{background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff}
+.btn-primary:hover{opacity:.9}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn-outline:hover{background:var(--bg3)}
+.btn-sm{padding:5px 12px;font-size:12px}
+.btn-icon{width:32px;height:32px;padding:0;justify-content:center;border-radius:8px}
+
+/* FILTROS */
+.filters{display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap}
+.filter-btn{padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit;transition:.15s}
+.filter-btn.active{background:var(--blue);border-color:var(--blue);color:#fff}
+.filter-btn:hover:not(.active){background:var(--bg3);color:var(--text)}
+
+/* EMPTY */
+.empty{text-align:center;padding:2rem;color:var(--text2);font-size:13px}
+
+/* BADGE */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:500}
+
+@media(max-width:768px){
+  .metrics{grid-template-columns:1fr 1fr}
+  .grid2,.grid3{grid-template-columns:1fr}
+}
+@media(max-width:480px){
+  .metrics{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-icon">💰</div>
+    <span class="logo-text">FinanceHub</span>
+  </div>
+  <div class="topbar-right">
+    <select class="mes-select" id="mes-select" onchange="filtrarMes()">
+      <option value="all">Todos os meses</option>
+      <option value="0">Janeiro</option>
+      <option value="1">Fevereiro</option>
+      <option value="2">Março</option>
+      <option value="3">Abril</option>
+      <option value="4">Maio</option>
+      <option value="5">Junho</option>
+      <option value="6">Julho</option>
+      <option value="7">Agosto</option>
+      <option value="8">Setembro</option>
+      <option value="9">Outubro</option>
+      <option value="10">Novembro</option>
+      <option value="11">Dezembro</option>
+    </select>
+    <button class="btn btn-primary btn-sm" onclick="openModal()">+ Transação</button>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- MÉTRICAS -->
+  <div class="metrics">
+    <div class="metric">
+      <div class="metric-header">
+        <span class="metric-label">Saldo total</span>
+        <div class="metric-icon" style="background:rgba(59,130,246,.15)">💳</div>
+      </div>
+      <div class="metric-value" id="m-saldo" style="color:var(--blue)">R$ 0,00</div>
+      <div class="metric-sub">Receitas - Despesas</div>
+    </div>
+    <div class="metric">
+      <div class="metric-header">
+        <span class="metric-label">Total de receitas</span>
+        <div class="metric-icon" style="background:rgba(16,185,129,.15)">📈</div>
+      </div>
+      <div class="metric-value" id="m-receitas" style="color:var(--green)">R$ 0,00</div>
+      <div class="metric-sub" id="m-receitas-qt">0 transações</div>
+    </div>
+    <div class="metric">
+      <div class="metric-header">
+        <span class="metric-label">Total de despesas</span>
+        <div class="metric-icon" style="background:rgba(239,68,68,.15)">📉</div>
+      </div>
+      <div class="metric-value" id="m-despesas" style="color:var(--red)">R$ 0,00</div>
+      <div class="metric-sub" id="m-despesas-qt">0 transações</div>
+    </div>
+    <div class="metric">
+      <div class="metric-header">
+        <span class="metric-label">Economia do mês</span>
+        <div class="metric-icon" style="background:rgba(139,92,246,.15)">🎯</div>
+      </div>
+      <div class="metric-value" id="m-economia" style="color:var(--purple)">0%</div>
+      <div class="metric-sub">% da renda economizada</div>
+    </div>
+  </div>
+
+  <!-- GRÁFICOS -->
+  <div class="grid3">
+    <div class="card">
+      <div class="card-title">
+        <span>Receitas vs Despesas</span>
+        <span class="card-subtitle">Últimos 6 meses</span>
+      </div>
+      <canvas id="chart-barras" height="200"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Gastos por categoria</div>
+      <canvas id="chart-pizza" height="180"></canvas>
+      <div id="categorias-lista" style="margin-top:1rem"></div>
+    </div>
+  </div>
+
+  <!-- TRANSAÇÕES -->
+  <div class="card">
+    <div class="card-title">
+      <span>Transações recentes</span>
+      <span id="total-transacoes" class="card-subtitle"></span>
+    </div>
+    <div class="filters">
+      <button class="filter-btn active" onclick="filtrarTipo('all', this)">Todas</button>
+      <button class="filter-btn" onclick="filtrarTipo('receita', this)">Receitas</button>
+      <button class="filter-btn" onclick="filtrarTipo('despesa', this)">Despesas</button>
+      <button class="filter-btn" onclick="filtrarTipo('Alimentação', this)">🍔 Alimentação</button>
+      <button class="filter-btn" onclick="filtrarTipo('Transporte', this)">🚗 Transporte</button>
+      <button class="filter-btn" onclick="filtrarTipo('Lazer', this)">🎮 Lazer</button>
+      <button class="filter-btn" onclick="filtrarTipo('Saúde', this)">🏥 Saúde</button>
+      <button class="filter-btn" onclick="filtrarTipo('Salário', this)">💼 Salário</button>
+    </div>
+    <div id="transacoes-lista"></div>
+  </div>
+
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title">
+      <span>Nova transação</span>
+      <button class="btn btn-outline btn-icon" onclick="closeModal()">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Tipo</label>
+      <div class="tipo-btns">
+        <button class="tipo-btn active-receita" id="btn-receita" onclick="setTipo('receita')">📈 Receita</button>
+        <button class="tipo-btn" id="btn-despesa" onclick="setTipo('despesa')">📉 Despesa</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Descrição</label>
+      <input type="text" id="f-desc" placeholder="Ex: Salário, Aluguel, Mercado...">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Valor (R$)</label>
+        <input type="number" id="f-valor" placeholder="0,00" step="0.01" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Data</label>
+        <input type="date" id="f-data">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Categoria</label>
+      <select id="f-categoria">
+        <option value="Salário">💼 Salário</option>
+        <option value="Freelance">💻 Freelance</option>
+        <option value="Investimentos">📊 Investimentos</option>
+        <option value="Outros (Receita)">💰 Outros (Receita)</option>
+        <option value="Alimentação">🍔 Alimentação</option>
+        <option value="Transporte">🚗 Transporte</option>
+        <option value="Moradia">🏠 Moradia</option>
+        <option value="Saúde">🏥 Saúde</option>
+        <option value="Educação">📚 Educação</option>
+        <option value="Lazer">🎮 Lazer</option>
+        <option value="Roupas">👕 Roupas</option>
+        <option value="Tecnologia">📱 Tecnologia</option>
+        <option value="Outros (Despesa)">💸 Outros (Despesa)</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarTransacao()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---- DADOS ----
+const CATEGORIAS_CORES = {
+  'Salário':'#10b981','Freelance':'#3b82f6','Investimentos':'#8b5cf6','Outros (Receita)':'#06b6d4',
+  'Alimentação':'#f59e0b','Transporte':'#ef4444','Moradia':'#f97316','Saúde':'#ec4899',
+  'Educação':'#6366f1','Lazer':'#84cc16','Roupas':'#14b8a6','Tecnologia':'#a855f7','Outros (Despesa)':'#94a3b8'
+}
+
+const CATEGORIAS_EMOJI = {
+  'Salário':'💼','Freelance':'💻','Investimentos':'📊','Outros (Receita)':'💰',
+  'Alimentação':'🍔','Transporte':'🚗','Moradia':'🏠','Saúde':'🏥',
+  'Educação':'📚','Lazer':'🎮','Roupas':'👕','Tecnologia':'📱','Outros (Despesa)':'💸'
+}
+
+let transacoes = JSON.parse(localStorage.getItem('financehub') || '[]')
+let tipoAtual = 'receita'
+let filtroTipo = 'all'
+let filtroMes = 'all'
+let chartBarras = null
+let chartPizza = null
+
+// Dados iniciais se vazio
+if (!transacoes.length) {
+  const hoje = new Date()
+  const mes = hoje.getMonth()
+  const ano = hoje.getFullYear()
+  transacoes = [
+    {id:1,desc:'Salário',valor:5000,tipo:'receita',categoria:'Salário',data:`${ano}-${String(mes+1).padStart(2,'0')}-01`},
+    {id:2,desc:'Aluguel',valor:1500,tipo:'despesa',categoria:'Moradia',data:`${ano}-${String(mes+1).padStart(2,'0')}-05`},
+    {id:3,desc:'Supermercado',valor:800,tipo:'despesa',categoria:'Alimentação',data:`${ano}-${String(mes+1).padStart(2,'0')}-08`},
+    {id:4,desc:'Freelance React',valor:1200,tipo:'receita',categoria:'Freelance',data:`${ano}-${String(mes+1).padStart(2,'0')}-10`},
+    {id:5,desc:'Uber',valor:150,tipo:'despesa',categoria:'Transporte',data:`${ano}-${String(mes+1).padStart(2,'0')}-12`},
+    {id:6,desc:'Netflix',valor:45,tipo:'despesa',categoria:'Lazer',data:`${ano}-${String(mes+1).padStart(2,'0')}-15`},
+    {id:7,desc:'Academia',valor:100,tipo:'despesa',categoria:'Saúde',data:`${ano}-${String(mes+1).padStart(2,'0')}-15`},
+    {id:8,desc:'Curso Node.js',valor:200,tipo:'despesa',categoria:'Educação',data:`${ano}-${String(mes+1).padStart(2,'0')}-18`},
+    {id:9,desc:'Restaurante',valor:120,tipo:'despesa',categoria:'Alimentação',data:`${ano}-${String(mes+1).padStart(2,'0')}-20`},
+    {id:10,desc:'Dividendos',valor:350,tipo:'receita',categoria:'Investimentos',data:`${ano}-${String(mes+1).padStart(2,'0')}-22`},
+  ]
+  salvarLocal()
+}
+
+function salvarLocal() {
+  localStorage.setItem('financehub', JSON.stringify(transacoes))
+}
+
+function getTransacoesFiltradas() {
+  return transacoes.filter(t => {
+    const data = new Date(t.data + 'T00:00:00')
+    const mesOk = filtroMes === 'all' || data.getMonth() === parseInt(filtroMes)
+    const tipoOk = filtroTipo === 'all' || t.tipo === filtroTipo || t.categoria === filtroTipo
+    return mesOk && tipoOk
+  })
+}
+
+// ---- MÉTRICAS ----
+function updateMetrics() {
+  const list = getTransacoesFiltradas()
+  const receitas = list.filter(t => t.tipo === 'receita')
+  const despesas = list.filter(t => t.tipo === 'despesa')
+  const totalReceitas = receitas.reduce((s,t) => s+t.valor, 0)
+  const totalDespesas = despesas.reduce((s,t) => s+t.valor, 0)
+  const saldo = totalReceitas - totalDespesas
+  const economia = totalReceitas > 0 ? Math.round((1 - totalDespesas/totalReceitas)*100) : 0
+
+  document.getElementById('m-saldo').textContent = fmt(saldo)
+  document.getElementById('m-saldo').style.color = saldo >= 0 ? 'var(--green)' : 'var(--red)'
+  document.getElementById('m-receitas').textContent = fmt(totalReceitas)
+  document.getElementById('m-despesas').textContent = fmt(totalDespesas)
+  document.getElementById('m-receitas-qt').textContent = `${receitas.length} transações`
+  document.getElementById('m-despesas-qt').textContent = `${despesas.length} transações`
+  document.getElementById('m-economia').textContent = `${Math.max(0,economia)}%`
+  document.getElementById('total-transacoes').textContent = `${list.length} transações`
+}
+
+// ---- GRÁFICO BARRAS ----
+function updateChartBarras() {
+  const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+  const hoje = new Date()
+  const labels = []
+  const receitas = []
+  const despesas = []
+
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1)
+    labels.push(meses[d.getMonth()])
+    const mes = d.getMonth()
+    const ano = d.getFullYear()
+    const doMes = transacoes.filter(t => {
+      const td = new Date(t.data + 'T00:00:00')
+      return td.getMonth() === mes && td.getFullYear() === ano
+    })
+    receitas.push(doMes.filter(t=>t.tipo==='receita').reduce((s,t)=>s+t.valor,0))
+    despesas.push(doMes.filter(t=>t.tipo==='despesa').reduce((s,t)=>s+t.valor,0))
+  }
+
+  if (chartBarras) chartBarras.destroy()
+  const ctx = document.getElementById('chart-barras').getContext('2d')
+  chartBarras = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Receitas', data: receitas, backgroundColor: 'rgba(16,185,129,.7)', borderRadius: 6 },
+        { label: 'Despesas', data: despesas, backgroundColor: 'rgba(239,68,68,.7)', borderRadius: 6 }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color: '#94a3b8', font: { size: 11 } } } },
+      scales: {
+        x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8', callback: v => 'R$'+v.toLocaleString('pt-BR') } }
+      }
+    }
+  })
+}
+
+// ---- GRÁFICO PIZZA ----
+function updateChartPizza() {
+  const despesas = transacoes.filter(t => t.tipo === 'despesa')
+  const porCategoria = {}
+  despesas.forEach(t => {
+    porCategoria[t.categoria] = (porCategoria[t.categoria] || 0) + t.valor
+  })
+
+  const labels = Object.keys(porCategoria)
+  const values = Object.values(porCategoria)
+  const cores = labels.map(l => CATEGORIAS_CORES[l] || '#94a3b8')
+  const total = values.reduce((s,v) => s+v, 0)
+
+  if (chartPizza) chartPizza.destroy()
+  const ctx = document.getElementById('chart-pizza').getContext('2d')
+  chartPizza = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: values, backgroundColor: cores, borderWidth: 0, hoverOffset: 4 }] },
+    options: {
+      responsive: true,
+      cutout: '65%',
+      plugins: { legend: { display: false } }
+    }
+  })
+
+  const lista = document.getElementById('categorias-lista')
+  lista.innerHTML = labels.slice(0,5).map((l,i) => `
+    <div class="cat-item">
+      <div class="cat-dot" style="background:${cores[i]}"></div>
+      <div class="cat-info">
+        <div class="cat-name">${CATEGORIAS_EMOJI[l]||''} ${l}</div>
+        <div class="cat-bar"><div class="cat-fill" style="background:${cores[i]};width:${Math.round(values[i]/total*100)}%"></div></div>
+      </div>
+      <div class="cat-value">${fmt(values[i])}</div>
+    </div>
+  `).join('')
+}
+
+// ---- TRANSAÇÕES ----
+function updateTransacoes() {
+  const list = getTransacoesFiltradas().sort((a,b) => new Date(b.data) - new Date(a.data))
+  const el = document.getElementById('transacoes-lista')
+
+  if (!list.length) {
+    el.innerHTML = '<div class="empty">Nenhuma transação encontrada</div>'
+    return
+  }
+
+  el.innerHTML = list.map(t => `
+    <div class="transaction">
+      <div class="transaction-icon" style="background:${t.tipo==='receita'?'rgba(16,185,129,.15)':'rgba(239,68,68,.15)'}">
+        ${CATEGORIAS_EMOJI[t.categoria] || (t.tipo==='receita'?'📈':'📉')}
+      </div>
+      <div class="transaction-info">
+        <div class="transaction-name">${t.desc}</div>
+        <div class="transaction-date">${fmtData(t.data)} · ${t.categoria}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="transaction-amount ${t.tipo==='receita'?'amount-positive':'amount-negative'}">
+          ${t.tipo==='receita'?'+':'-'} ${fmt(t.valor)}
+        </div>
+        <button class="btn btn-outline btn-icon btn-sm" onclick="deletar(${t.id})" style="color:var(--red);border-color:transparent;font-size:14px">🗑</button>
+      </div>
+    </div>
+  `).join('')
+}
+
+function deletar(id) {
+  if (!confirm('Excluir esta transação?')) return
+  transacoes = transacoes.filter(t => t.id !== id)
+  salvarLocal()
+  renderAll()
+}
+
+// ---- FILTROS ----
+function filtrarTipo(tipo, el) {
+  filtroTipo = tipo
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'))
+  el.classList.add('active')
+  updateMetrics()
+  updateTransacoes()
+}
+
+function filtrarMes() {
+  filtroMes = document.getElementById('mes-select').value
+  updateMetrics()
+  updateTransacoes()
+}
+
+// ---- MODAL ----
+function openModal() {
+  document.getElementById('modal').classList.add('open')
+  document.getElementById('f-data').value = new Date().toISOString().split('T')[0]
+}
+function closeModal() { document.getElementById('modal').classList.remove('open') }
+
+function setTipo(tipo) {
+  tipoAtual = tipo
+  document.getElementById('btn-receita').className = `tipo-btn ${tipo==='receita'?'active-receita':''}`
+  document.getElementById('btn-despesa').className = `tipo-btn ${tipo==='despesa'?'active-despesa':''}`
+}
+
+function salvarTransacao() {
+  const desc = document.getElementById('f-desc').value.trim()
+  const valor = parseFloat(document.getElementById('f-valor').value)
+  const data = document.getElementById('f-data').value
+  const categoria = document.getElementById('f-categoria').value
+
+  if (!desc || !valor || !data) { alert('Preencha todos os campos'); return }
+
+  transacoes.push({
+    id: Date.now(),
+    desc, valor, tipo: tipoAtual, categoria, data
+  })
+  salvarLocal()
+  closeModal()
+  document.getElementById('f-desc').value = ''
+  document.getElementById('f-valor').value = ''
+  renderAll()
+}
+
+// ---- UTILS ----
+function fmt(v) {
+  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+function fmtData(d) {
+  const dt = new Date(d + 'T00:00:00')
+  return dt.toLocaleDateString('pt-BR')
+}
+
+function renderAll() {
+  updateMetrics()
+  updateChartBarras()
+  updateChartPizza()
+  updateTransacoes()
+}
+
+document.getElementById('modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal()
+})
+
+// Definir mês atual no select
+const mesAtual = new Date().getMonth()
+document.getElementById('mes-select').value = mesAtual
+filtroMes = mesAtual.toString()
+
+renderAll()
+</script>
+</body>
+</html>
